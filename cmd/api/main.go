@@ -29,6 +29,9 @@ func main() {
 
 	r.Get("/health", handlers.Health)
 
+	linkHandler := handlers.NewLinkHandler(nil)
+	linkHandler.RegisterRoutes(r)
+
 	fmt.Println("Server running on: " + port)
 	http.ListenAndServe(":"+port, r)
 }
