@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"shrt/internal/apierr"
 	"shrt/internal/services"
 )
 
@@ -31,16 +32,18 @@ func (h *LinkHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		apierr.WriteError(w, apierr.NewValidation("invalid request payload"))
 		return
 	}
 
-	if err := h.service.CreateShortURL(req.ShortCode, req.OriginalURL, req.ExpiresAt); err != nil {
-		http.Error(w, "Failed to create short URL", http.StatusInternalServerError)
+	url, err := h.service.CreateShortURL(req.ShortCode, req.OriginalURL, req.ExpiresAt)
+	if err != nil {
+		apierr.WriteError(w, apierr.NewInternal("failed to create short URL", err))
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(url)
 }
 
 func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +51,7 @@ func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 
 	originalURL, err := h.service.GetByShortCode(shortCode)
 	if err != nil {
-		http.Error(w, "Not found", http.StatusNotFound)
+		apierr.WriteError(w, apierr.NewNotFound("short URL not found"))
 		return
 	}
 
