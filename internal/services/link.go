@@ -5,10 +5,12 @@ import (
 	"shrt/internal/models"
 	"shrt/internal/utils/validators"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Repository interface {
-	CreateShortURL(shortCode, originalURL string, expiresAt *time.Time) error
+	CreateShortURL(url models.ShortURL) error
 	GetByShortCode(shortCode string) (string, error)
 }
 
@@ -33,9 +35,23 @@ func (s *LinkService) CreateShortURL(shortCode string, originalURL string, expir
 	if expiresAt != nil && expiresAt.Before(time.Now()) {
 		return models.ShortURL{}, apierr.NewValidation("expires_at must be in the future")
 	}
+
+	//TODO: check for existing short code -> 409
 	
-	s.repo.CreateShortURL(shortCode, originalURL, expiresAt)
-	return models.ShortURL{ShortCode: shortCode, OriginalURL: originalURL}, nil
+	shortURL := models.ShortURL{
+		ID:          uuid.New(),
+		ShortCode:   shortCode,
+		OriginalURL: originalURL,
+		CreatedAt:   time.Now(),
+		ExpiresAt:   expiresAt,
+	}
+
+	err := s.repo.CreateShortURL(shortURL)
+	if err != nil {
+		return models.ShortURL{}, err
+	}
+
+	return shortURL, nil
 }
 
 func (s *LinkService) GetByShortCode(shortCode string) (string, error) {

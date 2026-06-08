@@ -9,6 +9,8 @@ import (
 	"github.com/joho/godotenv"
 
 	"shrt/internal/handlers"
+	"shrt/internal/repositories/memory"
+	"shrt/internal/services"
 )
 
 func main() {
@@ -29,7 +31,9 @@ func main() {
 
 	r.Get("/health", handlers.Health)
 
-	linkHandler := handlers.NewLinkHandler(nil)
+	repo := memory.NewLinkRepository()
+	svc := services.NewLinkService(repo)
+	linkHandler := handlers.NewLinkHandler(svc)
 	linkHandler.RegisterRoutes(r)
 
 	fmt.Println("Server running on: " + port)
