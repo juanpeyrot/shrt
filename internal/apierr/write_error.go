@@ -30,6 +30,8 @@ func statusFromType(t ErrorType) int {
 			return http.StatusBadRequest
 		case TypeNotFound:
 			return http.StatusNotFound
+		case TypeConflict:
+			return http.StatusConflict
 		default:
 			return http.StatusInternalServerError
   }

@@ -12,7 +12,7 @@ import (
 	"shrt/internal/config"
 	"shrt/internal/db"
 	"shrt/internal/handlers"
-	"shrt/internal/repositories/memory"
+	"shrt/internal/repositories"
 	"shrt/internal/services"
 )
 
@@ -55,7 +55,7 @@ func run() error {
 	healthHandler := handlers.NewHealthHandler(dbpool)
 	r.Get("/health", healthHandler.Health)
 
-	repo := memory.NewLinkRepository()
+	repo := repositories.NewLinkRepository(dbpool)
 	svc := services.NewLinkService(repo)
 	linkHandler := handlers.NewLinkHandler(svc)
 	linkHandler.RegisterRoutes(r)

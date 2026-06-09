@@ -8,6 +8,10 @@ func NewNotFound(msg string) *AppError {
     return &AppError{Type: TypeNotFound, Message: msg}
 }
 
+func NewConflict(msg string) *AppError {
+	return &AppError{Type: TypeConflict, Message: msg}
+}
+
 func NewInternal(msg string, err error) *AppError {
-    return &AppError{Type: TypeInternal, Message: msg, Err: err}
+	return &AppError{Type: TypeInternal, Message: msg, Err: err}
 }

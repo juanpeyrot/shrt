@@ -38,7 +38,7 @@ func (h *LinkHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 
 	url, err := h.service.CreateShortURL(req.ShortCode, req.OriginalURL, req.ExpiresAt)
 	if err != nil {
-		apierr.WriteError(w, apierr.NewInternal("failed to create short URL", err))
+		apierr.WriteError(w, err)
 		return
 	}
 

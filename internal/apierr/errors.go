@@ -3,9 +3,10 @@ package apierr
 type ErrorType string
 
 const (
-  TypeValidation ErrorType = "VALIDATION"
-  TypeNotFound   ErrorType = "NOT_FOUND"
-  TypeInternal   ErrorType = "INTERNAL"
+	TypeValidation ErrorType = "VALIDATION"
+	TypeNotFound   ErrorType = "NOT_FOUND"
+	TypeConflict   ErrorType = "CONFLICT"
+	TypeInternal   ErrorType = "INTERNAL"
 )
 
 type AppError struct {
