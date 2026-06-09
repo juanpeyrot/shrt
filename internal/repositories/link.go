@@ -3,13 +3,14 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"shrt/internal/apierr"
 	"shrt/internal/models"
+	"shrt/internal/services"
 )
 
 type LinkRepository struct {
@@ -29,9 +30,9 @@ func (r *LinkRepository) CreateShortURL(url models.ShortURL) error {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return apierr.NewConflict("short_code already in use")
+			return services.ErrDuplicateShortCode
 		}
-		return apierr.NewInternal("failed to create short URL", err)
+		return fmt.Errorf("db insert: %w", err)
 	}
 	return nil
 }
@@ -47,9 +48,9 @@ func (r *LinkRepository) GetByShortCode(shortCode string) (string, error) {
 	).Scan(&originalURL)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", apierr.NewNotFound("short URL not found")
+			return "", services.ErrShortCodeNotFound
 		}
-		return "", apierr.NewInternal("failed to get short URL", err)
+		return "", fmt.Errorf("db query: %w", err)
 	}
 	return originalURL, nil
 }

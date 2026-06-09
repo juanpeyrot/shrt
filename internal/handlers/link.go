@@ -42,6 +42,7 @@ func (h *LinkHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(url)
 }

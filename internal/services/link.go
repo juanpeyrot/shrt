@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"shrt/internal/apierr"
 	"shrt/internal/models"
 	"shrt/internal/utils/validators"
@@ -36,8 +37,6 @@ func (s *LinkService) CreateShortURL(shortCode string, originalURL string, expir
 		return models.ShortURL{}, apierr.NewValidation("expires_at must be in the future")
 	}
 
-	//TODO: check for existing short code -> 409
-	
 	shortURL := models.ShortURL{
 		ID:          uuid.New(),
 		ShortCode:   shortCode,
@@ -48,12 +47,22 @@ func (s *LinkService) CreateShortURL(shortCode string, originalURL string, expir
 
 	err := s.repo.CreateShortURL(shortURL)
 	if err != nil {
-		return models.ShortURL{}, err
+		if errors.Is(err, ErrDuplicateShortCode) {
+			return models.ShortURL{}, apierr.NewConflict("short_code already in use")
+		}
+		return models.ShortURL{}, apierr.NewInternal("failed to create short URL", err)
 	}
 
 	return shortURL, nil
 }
 
 func (s *LinkService) GetByShortCode(shortCode string) (string, error) {
-	return s.repo.GetByShortCode(shortCode)
+	url, err := s.repo.GetByShortCode(shortCode)
+	if err != nil {
+		if errors.Is(err, ErrShortCodeNotFound) {
+			return "", apierr.NewNotFound("short URL not found")
+		}
+		return "", apierr.NewInternal("failed to get short URL", err)
+	}
+	return url, nil
 }
