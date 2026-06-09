@@ -26,7 +26,7 @@ func (h *LinkHandler) RegisterRoutes(r chi.Router) {
 
 func (h *LinkHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ShortCode   string     `json:"short_code"`
+		ShortCode   string     `json:"short_code,omitempty"`
 		OriginalURL string     `json:"original_url"`
 		ExpiresAt   *time.Time `json:"expires_at,omitempty"`
 	}
