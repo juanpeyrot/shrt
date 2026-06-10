@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"log/slog"
 	"shrt/internal/apierr"
 	"shrt/internal/models"
 	"shrt/internal/utils/shortcode"
@@ -16,6 +17,7 @@ const maxShortCodeRetries = 5
 type Repository interface {
 	CreateShortURL(url models.ShortURL) error
 	GetByShortCode(shortCode string) (string, error)
+	AddClick(shortCode string) error
 }
 
 type LinkService struct {
@@ -92,5 +94,10 @@ func (s *LinkService) GetByShortCode(shortCode string) (string, error) {
 		}
 		return "", apierr.NewInternal("failed to get short URL", err)
 	}
+
+	if err := s.repo.AddClick(shortCode); err != nil {
+    slog.Error("failed to increment click count", "short_code", shortCode, "err", err)
+	}
+
 	return url, nil
 }

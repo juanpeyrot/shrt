@@ -54,3 +54,16 @@ func (r *LinkRepository) GetByShortCode(shortCode string) (string, error) {
 	}
 	return originalURL, nil
 }
+
+func (r *LinkRepository) AddClick(shortCode string) error {
+	_, err := r.db.Exec(context.Background(),
+		`UPDATE links
+		 SET click_count = click_count + 1
+		 WHERE short_code = $1`,
+		shortCode,
+	)
+	if err != nil {
+		return fmt.Errorf("db update: %w", err)
+	}
+	return nil
+}
