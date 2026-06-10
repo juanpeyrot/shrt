@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-
 	"shrt/internal/apierr"
 	"shrt/internal/services"
 )
@@ -17,11 +16,6 @@ type LinkHandler struct {
 
 func NewLinkHandler(service *services.LinkService) *LinkHandler {
 	return &LinkHandler{service: service}
-}
-
-func (h *LinkHandler) RegisterRoutes(r chi.Router) {
-	r.Post("/links", h.CreateShortURL)
-	r.Get("/{shortCode}", h.Redirect)
 }
 
 func (h *LinkHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {

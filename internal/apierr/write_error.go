@@ -32,6 +32,10 @@ func statusFromType(t ErrorType) int {
 			return http.StatusNotFound
 		case TypeConflict:
 			return http.StatusConflict
+		case TypeUnauthorized:
+			return http.StatusUnauthorized
+		case TypeForbidden:
+			return http.StatusForbidden
 		default:
 			return http.StatusInternalServerError
   }

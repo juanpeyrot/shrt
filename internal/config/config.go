@@ -72,3 +72,4 @@ func WithTLS(enabled bool) func(*AppConfig) {
 		c.tls = enabled
 	}
 }
+

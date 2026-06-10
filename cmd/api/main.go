@@ -12,6 +12,7 @@ import (
 	"shrt/internal/config"
 	"shrt/internal/db"
 	"shrt/internal/handlers"
+	"shrt/internal/middleware"
 	"shrt/internal/repositories"
 	"shrt/internal/services"
 )
@@ -58,7 +59,14 @@ func run() error {
 	repo := repositories.NewLinkRepository(dbpool)
 	svc := services.NewLinkService(repo)
 	linkHandler := handlers.NewLinkHandler(svc)
-	linkHandler.RegisterRoutes(r)
+
+	r.Get("/{shortCode}", linkHandler.Redirect)
+	r.Post("/links", linkHandler.CreateShortURL)
+
+	jwtSecret := []byte(mustGetEnv("JWT_SECRET"))
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Authenticate(jwtSecret))
+	})
 
 	log.Println("Server running on port:", cfg.ServerPort())
 	return http.ListenAndServe(":"+cfg.ServerPort(), r)
