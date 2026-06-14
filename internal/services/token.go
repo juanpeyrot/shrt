@@ -1,4 +1,4 @@
-package auth
+package services
 
 import (
 	"errors"
@@ -8,6 +8,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+
+	"shrt/internal/auth"
 )
 
 const (
@@ -19,7 +21,6 @@ const (
 type tokenType string
 
 const (
-	tokenTypeAccess  tokenType = "access"
 	tokenTypeRefresh tokenType = "refresh"
 )
 
@@ -35,11 +36,6 @@ type TokenRepository interface {
 	DeleteRefreshToken(userID uuid.UUID) error
 }
 
-var (
-	ErrInvalidToken = errors.New("invalid token")
-	ErrTokenReuse = errors.New("refresh token reuse detected")
-)
-
 type TokenService struct {
 	secret []byte
 	repo   TokenRepository
@@ -49,47 +45,47 @@ func NewTokenService(secret []byte, repo TokenRepository) *TokenService {
 	return &TokenService{secret: secret, repo: repo}
 }
 
-func (s *TokenService) IssueTokenPair(userID uuid.UUID) (TokenPair, error) {
+func (s *TokenService) IssueTokenPair(userID uuid.UUID) (auth.TokenPair, error) {
 	accessToken, err := s.newAccessToken(userID)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("access token: %w", err)
+		return auth.TokenPair{}, fmt.Errorf("access token: %w", err)
 	}
 
 	refreshToken, jti, err := s.newRefreshToken(userID)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("refresh token: %w", err)
+		return auth.TokenPair{}, fmt.Errorf("refresh token: %w", err)
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(refreshToken), bcryptCost)
 	if err != nil {
-		return TokenPair{}, fmt.Errorf("hash refresh token: %w", err)
+		return auth.TokenPair{}, fmt.Errorf("hash refresh token: %w", err)
 	}
 
 	if err := s.repo.SaveRefreshToken(userID, string(hash), jti); err != nil {
-		return TokenPair{}, fmt.Errorf("save refresh token: %w", err)
+		return auth.TokenPair{}, fmt.Errorf("save refresh token: %w", err)
 	}
 
-	return TokenPair{AccessToken: accessToken, RefreshToken: refreshToken}, nil
+	return auth.TokenPair{AccessToken: accessToken, RefreshToken: refreshToken}, nil
 }
 
-func (s *TokenService) RefreshTokens(rawRefreshToken string) (TokenPair, error) {
+func (s *TokenService) RefreshTokens(rawRefreshToken string) (auth.TokenPair, error) {
 	claims, err := s.parseRefreshToken(rawRefreshToken)
 	if err != nil {
-		return TokenPair{}, ErrInvalidToken
+		return auth.TokenPair{}, ErrInvalidToken
 	}
 
 	storedHash, storedJTI, err := s.repo.GetRefreshToken(claims.UserID)
 	if err != nil {
-		return TokenPair{}, ErrInvalidToken
+		return auth.TokenPair{}, ErrInvalidToken
 	}
 
 	if storedJTI != claims.ID {
 		_ = s.repo.DeleteRefreshToken(claims.UserID)
-		return TokenPair{}, ErrTokenReuse
+		return auth.TokenPair{}, ErrTokenReuse
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(rawRefreshToken)); err != nil {
-		return TokenPair{}, ErrInvalidToken
+		return auth.TokenPair{}, ErrInvalidToken
 	}
 
 	return s.IssueTokenPair(claims.UserID)
@@ -100,7 +96,7 @@ func (s *TokenService) Revoke(userID uuid.UUID) error {
 }
 
 func (s *TokenService) newAccessToken(userID uuid.UUID) (string, error) {
-	claims := Claims{
+	claims := auth.Claims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        uuid.NewString(),

@@ -56,14 +56,21 @@ func run() error {
 	healthHandler := handlers.NewHealthHandler(dbpool)
 	r.Get("/health", healthHandler.Health)
 
-	repo := repositories.NewLinkRepository(dbpool)
-	svc := services.NewLinkService(repo)
-	linkHandler := handlers.NewLinkHandler(svc)
+	jwtSecret := []byte(mustGetEnv("JWT_SECRET"))
+
+	authRepo := repositories.NewAuthRepository(dbpool)
+	tokenSvc := services.NewTokenService(jwtSecret, authRepo)
+	authSvc := services.NewAuthService(authRepo, tokenSvc)
+	authHandler := handlers.NewAuthHandler(authSvc)
+	r.Post("/sign-up", authHandler.RegisterLocal)
+
+	linkRepo := repositories.NewLinkRepository(dbpool)
+	linkSvc := services.NewLinkService(linkRepo)
+	linkHandler := handlers.NewLinkHandler(linkSvc)
 
 	r.Get("/{shortCode}", linkHandler.Redirect)
 	r.Post("/links", linkHandler.CreateShortURL)
 
-	jwtSecret := []byte(mustGetEnv("JWT_SECRET"))
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Authenticate(jwtSecret))
 	})

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 
 	"shrt/internal/apierr"
 	"shrt/internal/auth"
@@ -12,8 +13,8 @@ import (
 )
 
 type AuthRepository interface {
-	CreateUser(u models.User) error
 	GetUserByEmail(email string) (models.User, error)
+	CreateUserWithAuthMethod(u models.User, m models.AuthMethod) error
 }
 
 type TokenIssuer interface {
@@ -48,14 +49,29 @@ func (s *AuthService) RegisterLocal(email, password, displayName string) (auth.T
 		return auth.TokenPair{}, apierr.NewInternal("failed to check email", err)
 	}
 
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return auth.TokenPair{}, apierr.NewInternal("failed to hash password", err)
+	}
+
+	now := time.Now()
 	user := models.User{
 		ID:          uuid.New(),
 		DisplayName: displayName,
 		Email:       email,
-		CreatedAt:   time.Now(),
+		CreatedAt:   now,
+	}
+	hashStr := string(hash)
+	authMethod := models.AuthMethod{
+		ID:           uuid.New(),
+		UserID:       user.ID,
+		Provider:     "local",
+		PasswordHash: &hashStr,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}
 
-	if err := s.repo.CreateUser(user); err != nil {
+	if err := s.repo.CreateUserWithAuthMethod(user, authMethod); err != nil {
 		return auth.TokenPair{}, apierr.NewInternal("failed to create user", err)
 	}
 
