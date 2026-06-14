@@ -14,17 +14,17 @@ import (
 
 const maxShortCodeRetries = 5
 
-type Repository interface {
+type LinkRepository interface {
 	CreateShortURL(url models.ShortURL) error
 	GetByShortCode(shortCode string) (string, error)
 	AddClick(shortCode string) error
 }
 
 type LinkService struct {
-	repo Repository
+	repo LinkRepository
 }
 
-func NewLinkService(repo Repository) *LinkService {
+func NewLinkService(repo LinkRepository) *LinkService {
 	return &LinkService{repo: repo}
 }
 
