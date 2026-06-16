@@ -1,13 +1,15 @@
 package services
 
 import (
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
 
 	"shrt/internal/auth"
 )
@@ -15,7 +17,6 @@ import (
 const (
 	accessTokenTTL  = 15 * time.Minute
 	refreshTokenTTL = 7 * 24 * time.Hour
-	bcryptCost      = 12
 )
 
 type tokenType string
@@ -56,12 +57,9 @@ func (s *TokenService) IssueTokenPair(userID uuid.UUID) (auth.TokenPair, error) 
 		return auth.TokenPair{}, fmt.Errorf("refresh token: %w", err)
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(refreshToken), bcryptCost)
-	if err != nil {
-		return auth.TokenPair{}, fmt.Errorf("hash refresh token: %w", err)
-	}
+	hash := hashRefreshToken(refreshToken)
 
-	if err := s.repo.SaveRefreshToken(userID, string(hash), jti); err != nil {
+	if err := s.repo.SaveRefreshToken(userID, hash, jti); err != nil {
 		return auth.TokenPair{}, fmt.Errorf("save refresh token: %w", err)
 	}
 
@@ -84,7 +82,7 @@ func (s *TokenService) RefreshTokens(rawRefreshToken string) (auth.TokenPair, er
 		return auth.TokenPair{}, ErrTokenReuse
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(storedHash), []byte(rawRefreshToken)); err != nil {
+	if subtle.ConstantTimeCompare([]byte(storedHash), []byte(hashRefreshToken(rawRefreshToken))) != 1 {
 		return auth.TokenPair{}, ErrInvalidToken
 	}
 
@@ -120,6 +118,11 @@ func (s *TokenService) newRefreshToken(userID uuid.UUID) (token string, jti stri
 	}
 	token, err = jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.secret)
 	return token, jti, err
+}
+
+func hashRefreshToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *TokenService) parseRefreshToken(raw string) (*refreshClaims, error) {
