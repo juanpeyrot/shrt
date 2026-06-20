@@ -85,10 +85,12 @@ func run() error {
 	linkHandler := handlers.NewLinkHandler(linkSvc)
 
 	r.Get("/{shortCode}", linkHandler.Redirect)
-	r.Post("/links", linkHandler.CreateShortURL)
+
+	r.With(middleware.OptionalAuthenticate(jwtSecret)).Post("/links", linkHandler.CreateShortURL)
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Authenticate(jwtSecret))
+		r.Get("/links/{shortCode}", linkHandler.RetrieveOriginalURL)
 	})
 
 	log.Println("Server running on port:", cfg.ServerPort())

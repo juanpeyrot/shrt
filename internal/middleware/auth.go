@@ -38,6 +38,27 @@ func Authenticate(secret []byte) func(http.Handler) http.Handler {
 	}
 }
 
+func OptionalAuthenticate(secret []byte) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			token := extractBearerToken(r)
+			if token != "" {
+				claims := &auth.Claims{}
+				_, err := jwt.ParseWithClaims(token, claims, func(t *jwt.Token) (any, error) {
+					if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+						return nil, jwt.ErrSignatureInvalid
+					}
+					return secret, nil
+				})
+				if err == nil {
+					r = r.WithContext(auth.WithClaims(r.Context(), claims))
+				}
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func extractBearerToken(r *http.Request) string {
 	header := r.Header.Get("Authorization")
 	parts := strings.SplitN(header, " ", 2)

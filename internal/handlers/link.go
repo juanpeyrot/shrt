@@ -5,9 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"shrt/internal/apierr"
+	"shrt/internal/auth"
 	"shrt/internal/services"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 type LinkHandler struct {
@@ -30,15 +33,18 @@ func (h *LinkHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, err := h.service.CreateShortURL(req.ShortCode, req.OriginalURL, req.ExpiresAt)
+	var userID *uuid.UUID
+	if claims, ok := auth.ClaimsFromContext(r.Context()); ok {
+		userID = &claims.UserID
+	}
+
+	url, err := h.service.CreateShortURL(userID, req.ShortCode, req.OriginalURL, req.ExpiresAt)
 	if err != nil {
 		apierr.WriteError(w, err)
 		return
 	}
 
-	w.Header().Add("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(url)
+	writeJSON(w, http.StatusCreated, url)
 }
 
 func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
@@ -51,4 +57,22 @@ func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	http.Redirect(w, r, originalURL, http.StatusFound)
+}
+
+func (h *LinkHandler) RetrieveOriginalURL(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		apierr.WriteError(w, apierr.NewUnauthorized("missing token"))
+		return
+	}
+
+	shortCode := chi.URLParam(r, "shortCode")
+
+	link, err := h.service.RetrieveLink(claims.UserID, shortCode)
+	if err != nil {
+		apierr.WriteError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, link)
 }
