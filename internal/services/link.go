@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"shrt/internal/apierr"
 	"shrt/internal/models"
@@ -19,7 +20,9 @@ type LinkRepository interface {
 	GetByShortCode(shortCode string) (string, error)
 	GetLinkByShortCode(shortCode string) (models.ShortURL, error)
 	UpdateOriginalURL(shortCode, originalURL string) error
-	AddClick(shortCode string) error
+	SoftDelete(shortCode string) error
+	AddClick(linkID fmt.Stringer, referer string) error
+	GetStats(linkID fmt.Stringer, days int) (models.LinkStats, error)
 }
 
 type LinkService struct {
@@ -44,8 +47,8 @@ func (s *LinkService) CreateShortURL(userID *uuid.UUID, shortCode string, origin
 	return s.createWithUserCode(userID, shortCode, originalURL, expiresAt)
 }
 
-func (s *LinkService) GetByShortCode(shortCode string) (string, error) {
-	url, err := s.repo.GetByShortCode(shortCode)
+func (s *LinkService) GetByShortCode(shortCode, referer string) (string, error) {
+	link, err := s.repo.GetLinkByShortCode(shortCode)
 	if err != nil {
 		if errors.Is(err, ErrShortCodeNotFound) {
 			return "", apierr.NewNotFound("short URL not found")
@@ -53,11 +56,11 @@ func (s *LinkService) GetByShortCode(shortCode string) (string, error) {
 		return "", apierr.NewInternal("failed to get short URL", err)
 	}
 
-	if err := s.repo.AddClick(shortCode); err != nil {
-    slog.Error("failed to increment click count", "short_code", shortCode, "err", err)
+	if err := s.repo.AddClick(link.ID, referer); err != nil {
+		slog.Error("failed to record click", "short_code", shortCode, "err", err)
 	}
 
-	return url, nil
+	return link.OriginalURL, nil
 }
 
 func (s *LinkService) RetrieveLink(userID uuid.UUID, shortCode string) (models.ShortURL, error) {
@@ -92,6 +95,32 @@ func (s *LinkService) UpdateLink(userID uuid.UUID, shortCode, originalURL string
 
 	link.OriginalURL = originalURL
 	return link, nil
+}
+
+func (s *LinkService) DeleteLink(userID uuid.UUID, shortCode string) error {
+	if _, err := s.RetrieveLink(userID, shortCode); err != nil {
+		return err
+	}
+
+	if err := s.repo.SoftDelete(shortCode); err != nil {
+		return apierr.NewInternal("failed to delete short URL", err)
+	}
+
+	return nil
+}
+
+func (s *LinkService) GetStats(userID uuid.UUID, shortCode string, days int) (models.LinkStats, error) {
+	link, err := s.RetrieveLink(userID, shortCode)
+	if err != nil {
+		return models.LinkStats{}, err
+	}
+
+	stats, err := s.repo.GetStats(link.ID, days)
+	if err != nil {
+		return models.LinkStats{}, apierr.NewInternal("failed to get stats", err)
+	}
+
+	return stats, nil
 }
 
 func (s *LinkService) createWithUserCode(userID *uuid.UUID, shortCode, originalURL string, expiresAt *time.Time) (models.ShortURL, error) {

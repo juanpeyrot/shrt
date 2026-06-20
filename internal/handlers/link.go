@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"shrt/internal/apierr"
@@ -50,7 +51,7 @@ func (h *LinkHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	shortCode := chi.URLParam(r, "shortCode")
 
-	originalURL, err := h.service.GetByShortCode(shortCode)
+	originalURL, err := h.service.GetByShortCode(shortCode, r.Referer())
 	if err != nil {
 		apierr.WriteError(w, apierr.NewNotFound("short URL not found"))
 		return
@@ -101,4 +102,46 @@ func (h *LinkHandler) UpdateShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, link)
+}
+
+func (h *LinkHandler) DeleteShortURL(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		apierr.WriteError(w, apierr.NewUnauthorized("missing token"))
+		return
+	}
+
+	shortCode := chi.URLParam(r, "shortCode")
+
+	if err := h.service.DeleteLink(claims.UserID, shortCode); err != nil {
+		apierr.WriteError(w, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *LinkHandler) GetStats(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		apierr.WriteError(w, apierr.NewUnauthorized("missing token"))
+		return
+	}
+
+	shortCode := chi.URLParam(r, "shortCode")
+
+	days := 7
+	if d := r.URL.Query().Get("days"); d != "" {
+		if parsed, err := strconv.Atoi(d); err == nil && parsed > 0 {
+			days = parsed
+		}
+	}
+
+	stats, err := h.service.GetStats(claims.UserID, shortCode, days)
+	if err != nil {
+		apierr.WriteError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, stats)
 }
