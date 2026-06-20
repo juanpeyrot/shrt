@@ -76,3 +76,29 @@ func (h *LinkHandler) RetrieveOriginalURL(w http.ResponseWriter, r *http.Request
 
 	writeJSON(w, http.StatusOK, link)
 }
+
+func (h *LinkHandler) UpdateShortURL(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		apierr.WriteError(w, apierr.NewUnauthorized("missing token"))
+		return
+	}
+
+	var req struct {
+		URL string `json:"url"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		apierr.WriteError(w, apierr.NewValidation("invalid request payload"))
+		return
+	}
+
+	shortCode := chi.URLParam(r, "shortCode")
+
+	link, err := h.service.UpdateLink(claims.UserID, shortCode, req.URL)
+	if err != nil {
+		apierr.WriteError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, link)
+}

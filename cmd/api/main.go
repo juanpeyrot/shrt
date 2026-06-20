@@ -91,6 +91,7 @@ func run() error {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Authenticate(jwtSecret))
 		r.Get("/links/{shortCode}", linkHandler.RetrieveOriginalURL)
+		r.Put("/links/{shortCode}", linkHandler.UpdateShortURL)
 	})
 
 	log.Println("Server running on port:", cfg.ServerPort())

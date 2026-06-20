@@ -74,6 +74,17 @@ func (r *LinkRepository) GetLinkByShortCode(shortCode string) (models.ShortURL, 
 	return url, nil
 }
 
+func (r *LinkRepository) UpdateOriginalURL(shortCode, originalURL string) error {
+	_, err := r.db.Exec(context.Background(),
+		`UPDATE links SET original_url = $1 WHERE short_code = $2`,
+		originalURL, shortCode,
+	)
+	if err != nil {
+		return fmt.Errorf("db update: %w", err)
+	}
+	return nil
+}
+
 func (r *LinkRepository) AddClick(shortCode string) error {
 	_, err := r.db.Exec(context.Background(),
 		`UPDATE links

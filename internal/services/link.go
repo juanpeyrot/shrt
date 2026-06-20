@@ -18,6 +18,7 @@ type LinkRepository interface {
 	CreateShortURL(url models.ShortURL) error
 	GetByShortCode(shortCode string) (string, error)
 	GetLinkByShortCode(shortCode string) (models.ShortURL, error)
+	UpdateOriginalURL(shortCode, originalURL string) error
 	AddClick(shortCode string) error
 }
 
@@ -72,6 +73,24 @@ func (s *LinkService) RetrieveLink(userID uuid.UUID, shortCode string) (models.S
 		return models.ShortURL{}, apierr.NewForbidden("you don't own this short URL")
 	}
 
+	return link, nil
+}
+
+func (s *LinkService) UpdateLink(userID uuid.UUID, shortCode, originalURL string) (models.ShortURL, error) {
+	if originalURL == "" {
+		return models.ShortURL{}, apierr.NewValidation("original_url is required")
+	}
+
+	link, err := s.RetrieveLink(userID, shortCode)
+	if err != nil {
+		return models.ShortURL{}, err
+	}
+
+	if err := s.repo.UpdateOriginalURL(shortCode, originalURL); err != nil {
+		return models.ShortURL{}, apierr.NewInternal("failed to update short URL", err)
+	}
+
+	link.OriginalURL = originalURL
 	return link, nil
 }
 
