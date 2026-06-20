@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 
+	"shrt/internal/auth/oauth"
 	"shrt/internal/config"
 	"shrt/internal/db"
 	"shrt/internal/handlers"
@@ -43,6 +44,18 @@ func run() error {
 			Name:     mustGetEnv("DB_NAME"),
 			SSLMode:  getEnv("DB_SSLMODE", "disable"),
 		}),
+		config.WithOAuth(config.OAuthConfig{
+			Google: config.ProviderConfig{
+				ClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
+				ClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
+				RedirectURL:  getEnv("GOOGLE_REDIRECT_URL", ""),
+			},
+			Github: config.ProviderConfig{
+				ClientID:     getEnv("GITHUB_CLIENT_ID", ""),
+				ClientSecret: getEnv("GITHUB_CLIENT_SECRET", ""),
+				RedirectURL:  getEnv("GITHUB_REDIRECT_URL", ""),
+			},
+		}),
 	)
 
 	dbpool, err := db.New(cfg.DB())
@@ -61,8 +74,11 @@ func run() error {
 	authRepo := repositories.NewAuthRepository(dbpool)
 	tokenSvc := services.NewTokenService(jwtSecret, authRepo)
 	authSvc := services.NewAuthService(authRepo, tokenSvc)
-	authHandler := handlers.NewAuthHandler(authSvc)
+	authHandler := handlers.NewAuthHandler(authSvc, buildOAuthRegistry(cfg.OAuth()))
 	r.Post("/sign-up", authHandler.RegisterLocal)
+	r.Post("/login", authHandler.LoginLocal)
+	r.Get("/auth/{provider}", authHandler.OAuthRedirect)
+	r.Get("/auth/{provider}/callback", authHandler.OAuthCallback)
 
 	linkRepo := repositories.NewLinkRepository(dbpool)
 	linkSvc := services.NewLinkService(linkRepo)
@@ -77,6 +93,21 @@ func run() error {
 
 	log.Println("Server running on port:", cfg.ServerPort())
 	return http.ListenAndServe(":"+cfg.ServerPort(), r)
+}
+
+func buildOAuthRegistry(cfg config.OAuthConfig) oauth.Registry {
+	registry := oauth.Registry{}
+	if cfg.Google.Enabled() {
+		registry["google"] = oauth.NewGoogleProvider(
+			cfg.Google.ClientID, cfg.Google.ClientSecret, cfg.Google.RedirectURL,
+		)
+	}
+	if cfg.Github.Enabled() {
+		registry["github"] = oauth.NewGithubProvider(
+			cfg.Github.ClientID, cfg.Github.ClientSecret, cfg.Github.RedirectURL,
+		)
+	}
+	return registry
 }
 
 func mustGetEnv(key string) string {

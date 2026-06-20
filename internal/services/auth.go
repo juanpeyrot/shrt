@@ -9,12 +9,16 @@ import (
 
 	"shrt/internal/apierr"
 	"shrt/internal/auth"
+	"shrt/internal/auth/oauth"
 	"shrt/internal/models"
 )
 
 type AuthRepository interface {
 	GetUserByEmail(email string) (models.User, error)
+	GetLocalAuthByEmail(email string) (models.User, models.AuthMethod, error)
+	GetUserByProviderID(provider, providerUserID string) (models.User, error)
 	CreateUserWithAuthMethod(u models.User, m models.AuthMethod) error
+	AddAuthMethod(m models.AuthMethod) error
 }
 
 type TokenIssuer interface {
@@ -76,4 +80,77 @@ func (s *AuthService) RegisterLocal(email, password, displayName string) (auth.T
 	}
 
 	return s.tokenService.IssueTokenPair(user.ID)
+}
+
+func (s *AuthService) LoginLocal(email, password string) (auth.TokenPair, error) {
+	user, method, err := s.repo.GetLocalAuthByEmail(email)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			return auth.TokenPair{}, apierr.NewUnauthorized("invalid credentials")
+		}
+		return auth.TokenPair{}, apierr.NewInternal("failed to look up user", err)
+	}
+
+	if method.PasswordHash == nil {
+		return auth.TokenPair{}, apierr.NewUnauthorized("invalid credentials")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(*method.PasswordHash), []byte(password)); err != nil {
+		return auth.TokenPair{}, apierr.NewUnauthorized("invalid credentials")
+	}
+
+	return s.tokenService.IssueTokenPair(user.ID)
+}
+
+func (s *AuthService) AuthenticateOAuth(provider string, profile oauth.OAuthProfile) (auth.TokenPair, error) {
+	if profile.ProviderUserID == "" {
+		return auth.TokenPair{}, apierr.NewValidation("provider did not return a user id")
+	}
+
+	user, err := s.repo.GetUserByProviderID(provider, profile.ProviderUserID)
+	if err == nil {
+		return s.tokenService.IssueTokenPair(user.ID)
+	}
+	if !errors.Is(err, ErrUserNotFound) {
+		return auth.TokenPair{}, apierr.NewInternal("failed to look up provider identity", err)
+	}
+
+	now := time.Now()
+	method := models.AuthMethod{
+		ID:             uuid.New(),
+		Provider:       provider,
+		ProviderUserID: profile.ProviderUserID,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+	}
+
+	if profile.EmailVerified && profile.Email != "" {
+		existing, err := s.repo.GetUserByEmail(profile.Email)
+		if err == nil {
+			method.UserID = existing.ID
+			if err := s.repo.AddAuthMethod(method); err != nil {
+				return auth.TokenPair{}, apierr.NewInternal("failed to link auth method", err)
+			}
+			return s.tokenService.IssueTokenPair(existing.ID)
+		}
+		if !errors.Is(err, ErrUserNotFound) {
+			return auth.TokenPair{}, apierr.NewInternal("failed to check email", err)
+		}
+	}
+
+	displayName := profile.DisplayName
+	if len(displayName) < 3 {
+		displayName = provider + "_user"
+	}
+	newUser := models.User{
+		ID:          uuid.New(),
+		DisplayName: displayName,
+		Email:       profile.Email,
+		CreatedAt:   now,
+	}
+	method.UserID = newUser.ID
+	if err := s.repo.CreateUserWithAuthMethod(newUser, method); err != nil {
+		return auth.TokenPair{}, apierr.NewInternal("failed to create user", err)
+	}
+
+	return s.tokenService.IssueTokenPair(newUser.ID)
 }

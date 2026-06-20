@@ -13,6 +13,7 @@ type AppConfig struct {
 	maxConn    uint
 	env        Environment
 	tls        bool
+	oauth      OAuthConfig
 }
 
 type DBConfig struct {
@@ -24,11 +25,25 @@ type DBConfig struct {
 	SSLMode  string
 }
 
+type OAuthConfig struct {
+	Google ProviderConfig
+	Github ProviderConfig
+}
+
+type ProviderConfig struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURL  string
+}
+
+func (c ProviderConfig) Enabled() bool { return c.ClientID != "" }
+
 func (c *AppConfig) ServerPort() string { return c.serverPort }
 func (c *AppConfig) DB() DBConfig       { return c.db }
 func (c *AppConfig) MaxConn() uint      { return c.maxConn }
 func (c *AppConfig) Env() Environment   { return c.env }
 func (c *AppConfig) TLS() bool          { return c.tls }
+func (c *AppConfig) OAuth() OAuthConfig { return c.oauth }
 
 func New(opts ...func(*AppConfig)) *AppConfig {
 	cfg := &AppConfig{
@@ -70,6 +85,12 @@ func WithEnvironment(env Environment) func(*AppConfig) {
 func WithTLS(enabled bool) func(*AppConfig) {
 	return func(c *AppConfig) {
 		c.tls = enabled
+	}
+}
+
+func WithOAuth(oauth OAuthConfig) func(*AppConfig) {
+	return func(c *AppConfig) {
+		c.oauth = oauth
 	}
 }
 
