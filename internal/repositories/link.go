@@ -97,6 +97,41 @@ func (r *LinkRepository) SoftDelete(shortCode string) error {
 	return nil
 }
 
+func (r *LinkRepository) ListByUserID(userID fmt.Stringer, limit int, offset int) ([]models.ShortURL, int, error) {
+	var total int
+	err := r.db.QueryRow(context.Background(),
+		`SELECT COUNT(*) FROM links WHERE user_id = $1 AND deleted_at IS NULL`,
+		userID,
+	).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("db count: %w", err)
+	}
+
+	rows, err := r.db.Query(context.Background(),
+		`SELECT id, user_id, short_code, original_url, created_at, expires_at, deleted_at, click_count
+		 FROM links
+		 WHERE user_id = $1 AND deleted_at IS NULL
+		 ORDER BY created_at DESC
+		 LIMIT $2 OFFSET $3`,
+		userID, limit, offset,
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("db query: %w", err)
+	}
+	defer rows.Close()
+
+	var links []models.ShortURL
+	for rows.Next() {
+		var link models.ShortURL
+		if err := rows.Scan(&link.ID, &link.UserID, &link.ShortCode, &link.OriginalURL, &link.CreatedAt, &link.ExpiresAt, &link.DeletedAt, &link.ClickCount); err != nil {
+			return nil, 0, fmt.Errorf("db scan: %w", err)
+		}
+		links = append(links, link)
+	}
+
+	return links, total, nil
+}
+
 func (r *LinkRepository) AddClick(linkID fmt.Stringer, referer string) error {
 	_, err := r.db.Exec(context.Background(),
 		`INSERT INTO link_clicks (link_id, referer) VALUES ($1, $2)`,

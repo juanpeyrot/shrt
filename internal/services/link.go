@@ -21,6 +21,7 @@ type LinkRepository interface {
 	CreateShortURL(url models.ShortURL) error
 	GetByShortCode(shortCode string) (string, error)
 	GetLinkByShortCode(shortCode string) (models.ShortURL, error)
+	ListByUserID(userID fmt.Stringer, limit, offset int) ([]models.ShortURL, int, error)
 	UpdateOriginalURL(shortCode, originalURL string) error
 	SoftDelete(shortCode string) error
 	AddClick(linkID fmt.Stringer, referer string) error
@@ -148,6 +149,36 @@ func (s *LinkService) GetStats(userID uuid.UUID, shortCode string, days int) (mo
 	}
 
 	return stats, nil
+}
+
+func (s *LinkService) ListLinks(userID uuid.UUID, page, pageSize int) (models.PaginatedResponse[models.ShortURL], error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+
+	offset := (page - 1) * pageSize
+
+	links, total, err := s.repo.ListByUserID(userID, pageSize, offset)
+	if err != nil {
+		return models.PaginatedResponse[models.ShortURL]{}, apierr.NewInternal("failed to list links", err)
+	}
+
+	if links == nil {
+		links = []models.ShortURL{}
+	}
+
+	totalPages := (total + pageSize - 1) / pageSize
+
+	return models.PaginatedResponse[models.ShortURL]{
+		Data:       links,
+		Page:       page,
+		PageSize:   pageSize,
+		TotalItems: total,
+		TotalPages: totalPages,
+	}, nil
 }
 
 func (s *LinkService) createWithUserCode(userID *uuid.UUID, shortCode, originalURL string, expiresAt *time.Time) (models.ShortURL, error) {

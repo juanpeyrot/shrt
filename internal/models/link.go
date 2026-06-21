@@ -16,3 +16,4 @@ type ShortURL struct {
 	DeletedAt   *time.Time `json:"deleted_at,omitempty"`
 	ClickCount  int64      `json:"click_count"`
 }
+

@@ -48,6 +48,36 @@ func (h *LinkHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, url)
 }
 
+func (h *LinkHandler) ListLinks(w http.ResponseWriter, r *http.Request) {
+	claims, ok := auth.ClaimsFromContext(r.Context())
+	if !ok {
+		apierr.WriteError(w, apierr.NewUnauthorized("missing token"))
+		return
+	}
+
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	pageSize := 20
+	if ps := r.URL.Query().Get("page_size"); ps != "" {
+		if parsed, err := strconv.Atoi(ps); err == nil && parsed > 0 {
+			pageSize = parsed
+		}
+	}
+
+	result, err := h.service.ListLinks(claims.UserID, page, pageSize)
+	if err != nil {
+		apierr.WriteError(w, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, result)
+}
+
 func (h *LinkHandler) Redirect(w http.ResponseWriter, r *http.Request) {
 	shortCode := chi.URLParam(r, "shortCode")
 

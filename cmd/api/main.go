@@ -105,6 +105,7 @@ func run() error {
 
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Authenticate(jwtSecret))
+		r.Get("/links", linkHandler.ListLinks)
 		r.Get("/links/{shortCode}", linkHandler.RetrieveOriginalURL)
 		r.Put("/links/{shortCode}", linkHandler.UpdateShortURL)
 		r.Delete("/links/{shortCode}", linkHandler.DeleteShortURL)
