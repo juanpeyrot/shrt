@@ -1,10 +1,11 @@
 {{define "title"}}Shorten your URLs{{end}}
 {{define "content"}}
 <section class="hero">
+  <img src="/static/img/hero.webp" alt="" class="hero-img">
   <h1 class="hero-title">Shorten any URL</h1>
   <p class="hero-subtitle">Paste your long URL and get a short, shareable link instantly.</p>
 </section>
-<div class="shorten-form">
+<div class="shorten-card">
   <form hx-post="/shorten" hx-target="#result" hx-swap="innerHTML">
     <div class="shorten-input-group">
       <input type="url" name="original_url" class="form-input" placeholder="https://example.com/your-very-long-url" required>
@@ -12,9 +13,12 @@
     </div>
     <div class="shorten-extras">
       <input type="text" name="short_code" class="form-input" placeholder="Custom alias (optional)">
-      <input type="datetime-local" name="expires_at" class="form-input" placeholder="Expires at (optional)">
+      <input type="datetime-local" name="expires_at" class="form-input" min="{{.Content}}">
     </div>
   </form>
   <div id="result"></div>
+</div>
+<div class="hero-illustration">
+  <img src="/static/img/dino.webp" alt="">
 </div>
 {{end}}

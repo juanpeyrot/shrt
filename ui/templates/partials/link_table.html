@@ -1,5 +1,6 @@
 {{define "link_table"}}
 {{if .Links}}
+<div class="link-table-wrapper">
 <table class="link-table">
   <thead>
     <tr>
@@ -16,6 +17,7 @@
     {{end}}
   </tbody>
 </table>
+</div>
 {{if gt .TotalPages 1}}
 <nav class="pagination">
   {{if gt .Page 1}}
@@ -39,9 +41,10 @@
 {{end}}
 {{else}}
 <div class="empty-state">
-  <p class="empty-state-title">No links yet</p>
-  <p>Create your first short link to get started.</p>
-  <a href="/" class="btn btn-primary mt-md" style="display:inline-flex">Create Link</a>
+  <img src="/static/img/empty.webp" alt="" class="empty-state-img">
+  <h2 class="empty-state-title">You haven't shortened any URLs yet</h2>
+  <p>Create your first short link and start sharing it with the world</p>
+  <a href="/" class="btn btn-primary mt-lg">+ Create your first link</a>
 </div>
 {{end}}
 {{end}}

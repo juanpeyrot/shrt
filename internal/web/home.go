@@ -12,7 +12,7 @@ import (
 )
 
 func (h *WebHandler) Home(w http.ResponseWriter, r *http.Request) {
-	h.templates.Render(w, "home", h.pageData(r, nil))
+	h.templates.Render(w, "home", h.pageData(r, time.Now().Format("2006-01-02T15:04")))
 }
 
 func (h *WebHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {

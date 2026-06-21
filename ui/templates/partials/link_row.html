@@ -6,19 +6,20 @@
   <td>{{formatDate .Link.CreatedAt}}</td>
   <td>
     <div class="actions">
-      <button class="btn btn-outline btn-sm"
+      <button class="action-btn action-stats"
               hx-get="/dashboard/links/{{.Link.ShortCode}}/stats"
               hx-target="#stats-panel"
               hx-swap="innerHTML">Stats</button>
-      <button class="btn btn-outline btn-sm"
+      <button class="action-btn action-edit"
               hx-get="/dashboard/links/{{.Link.ShortCode}}/edit"
               hx-target="#row-{{.Link.ShortCode}}"
               hx-swap="outerHTML">Edit</button>
-      <button class="btn btn-danger btn-sm"
+      <button class="action-btn action-delete"
               hx-delete="/dashboard/links/{{.Link.ShortCode}}"
               hx-target="#row-{{.Link.ShortCode}}"
               hx-swap="outerHTML swap:200ms"
-              hx-confirm="Delete this link?"></button>
+              hx-trigger="confirmed"
+              onclick="openConfirmModal(this)">Delete</button>
     </div>
   </td>
 </tr>
