@@ -12,6 +12,7 @@
   <td class="original-url" title="{{.Link.OriginalURL}}">{{.Link.OriginalURL}}</td>
   <td class="click-count">{{.Link.ClickCount}}</td>
   <td>{{formatDate .Link.CreatedAt}}</td>
+  <td class="expires-cell">{{if .Link.ExpiresAt}}{{formatDateTime .Link.ExpiresAt}}{{else}}<span class="muted">Never</span>{{end}}</td>
   <td>
     <div class="actions">
       <button class="action-btn action-stats"

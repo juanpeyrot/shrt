@@ -351,8 +351,8 @@ a:hover {
 }
 
 .hero-illustration img {
-  max-width: 100%;
-  max-height: 260px;
+  max-width: 534px;
+  width: 100%;
   height: auto;
 }
 
@@ -596,6 +596,15 @@ a:hover {
 .link-table .click-count {
   font-family: var(--font-mono);
   font-weight: 700;
+}
+
+.link-table .expires-cell {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.link-table .expires-cell .muted {
+  color: var(--muted);
 }
 
 .link-table .actions {

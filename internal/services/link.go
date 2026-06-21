@@ -54,6 +54,10 @@ func (s *LinkService) CreateShortURL(userID *uuid.UUID, shortCode string, origin
 func (s *LinkService) GetByShortCode(shortCode, referer string) (string, error) {
 	cached, err := s.linkCache.Get(shortCode)
 	if err == nil {
+		if cached.ExpiresAt != nil && cached.ExpiresAt.Before(time.Now()) {
+			s.linkCache.Delete(shortCode)
+			return "", apierr.NewNotFound("short URL not found")
+		}
 		go s.recordClick(cached.ID, referer)
 		return cached.OriginalURL, nil
 	}
@@ -69,7 +73,7 @@ func (s *LinkService) GetByShortCode(shortCode, referer string) (string, error) 
 		return "", apierr.NewInternal("failed to get short URL", err)
 	}
 
-	if err := s.linkCache.Set(shortCode, cache.CachedLink{ID: link.ID, OriginalURL: link.OriginalURL}); err != nil {
+	if err := s.linkCache.Set(shortCode, cache.CachedLink{ID: link.ID, OriginalURL: link.OriginalURL, ExpiresAt: link.ExpiresAt}); err != nil {
 		slog.Error("cache set failed", "short_code", shortCode, "err", err)
 	}
 

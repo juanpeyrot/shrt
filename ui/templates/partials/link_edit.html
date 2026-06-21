@@ -1,7 +1,7 @@
 {{define "link_edit"}}
 <tr id="row-{{.Link.ShortCode}}">
   <td><span class="short-code">{{.Link.ShortCode}}</span></td>
-  <td colspan="3">
+  <td colspan="4">
     {{if .Error}}<div class="alert alert-error mb-md">{{.Error}}</div>{{end}}
     <form class="inline-edit"
           hx-put="/dashboard/links/{{.Link.ShortCode}}"

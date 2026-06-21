@@ -15,8 +15,9 @@ const (
 )
 
 type CachedLink struct {
-	ID          uuid.UUID `json:"id"`
-	OriginalURL string    `json:"original_url"`
+	ID          uuid.UUID  `json:"id"`
+	OriginalURL string     `json:"original_url"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
 }
 
 type LinkCache struct {

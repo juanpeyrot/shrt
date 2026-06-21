@@ -160,7 +160,8 @@ func run() error {
 	})
 
 	// Redirect catch-all
-	r.Get("/{shortCode}", linkHandler.Redirect)
+	r.Get("/{shortCode}", webHandler.RedirectShortCode)
+	r.NotFound(webHandler.NotFound)
 
 	log.Println("Server running on port:", cfg.ServerPort())
 	return http.ListenAndServe(":"+cfg.ServerPort(), r)
