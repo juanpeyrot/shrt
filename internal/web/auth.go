@@ -49,7 +49,7 @@ func (h *WebHandler) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	tokens, err := h.authService.RegisterLocal(email, password, displayName)
 	if err != nil {
 		h.templates.Render(w, "register", h.pageData(r, map[string]any{
-			"Error":       err.Error(),
+			"Error":       friendlyError(err),
 			"Email":       email,
 			"DisplayName": displayName,
 		}))

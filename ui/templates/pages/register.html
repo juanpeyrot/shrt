@@ -7,19 +7,20 @@
     {{if .Content}}{{with .Content}}
       {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
     {{end}}{{end}}
-    <form method="POST" action="/register">
+    <form id="register-form" method="POST" action="/register" novalidate>
       <div class="form-group">
         <label class="form-label" for="display_name">Display name</label>
-        <input type="text" id="display_name" name="display_name" class="form-input" placeholder="Your name" required minlength="3" {{if .Content}}{{with .Content}}value="{{.DisplayName}}"{{end}}{{end}}>
+        <input type="text" id="display_name" name="display_name" class="form-input" placeholder="Your name" data-min="3" data-max="50" {{if .Content}}{{with .Content}}value="{{.DisplayName}}"{{end}}{{end}}>
       </div>
       <div class="form-group">
         <label class="form-label" for="email">Email</label>
-        <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com" required {{if .Content}}{{with .Content}}value="{{.Email}}"{{end}}{{end}}>
+        <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com" data-max="255" {{if .Content}}{{with .Content}}value="{{.Email}}"{{end}}{{end}}>
       </div>
       <div class="form-group">
         <label class="form-label" for="password">Password</label>
-        <input type="password" id="password" name="password" class="form-input" placeholder="At least 8 characters" required minlength="8">
+        <input type="password" id="password" name="password" class="form-input" placeholder="At least 8 characters" data-min="8" data-max="128">
       </div>
+      <div id="form-errors"></div>
       <button type="submit" class="btn btn-primary" style="width:100%">Create account</button>
     </form>
     <div class="auth-divider">or</div>
@@ -36,4 +37,22 @@
     <p class="auth-footer">Already have an account? <a href="/login">Sign in</a></p>
   </div>
 </div>
+<script>
+(function() {
+  capInputs(document.getElementById('register-form'));
+  document.getElementById('register-form').addEventListener('submit', function(e) {
+    var errors = [];
+    var name = this.display_name.value.trim();
+    var email = this.email.value.trim();
+    var pw = this.password.value;
+    if (!name) errors.push('Please enter your display name.');
+    else if (name.length < 3 || name.length > 50) errors.push('Display name must be between 3 and 50 characters.');
+    if (!email) errors.push('Please enter your email address.');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Please enter a valid email address.');
+    if (!pw) errors.push('Please enter a password.');
+    else if (pw.length < 8 || pw.length > 128) errors.push('Password must be between 8 and 128 characters.');
+    if (errors.length) { e.preventDefault(); showFormErrors('register-form', errors); }
+  });
+})();
+</script>
 {{end}}

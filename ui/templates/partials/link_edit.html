@@ -7,7 +7,7 @@
           hx-put="/dashboard/links/{{.Link.ShortCode}}"
           hx-target="#row-{{.Link.ShortCode}}"
           hx-swap="outerHTML">
-      <input type="url" name="url" class="form-input" value="{{.Link.OriginalURL}}" required>
+      <input type="url" name="url" class="form-input" value="{{.Link.OriginalURL}}" required maxlength="2048" pattern="https?://[a-zA-Z0-9].*\..*">
       <button type="submit" class="btn btn-primary btn-sm">Save</button>
       <button type="button" class="btn btn-outline btn-sm"
               hx-get="/dashboard/links/{{.Link.ShortCode}}/row"

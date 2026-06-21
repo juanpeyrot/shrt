@@ -1,11 +1,9 @@
 package web
 
 import (
-	"errors"
 	"net/http"
 	"time"
 
-	"shrt/internal/apierr"
 	"shrt/internal/auth"
 
 	"github.com/google/uuid"
@@ -35,13 +33,8 @@ func (h *WebHandler) CreateShortURL(w http.ResponseWriter, r *http.Request) {
 
 	link, err := h.linkService.CreateShortURL(userID, shortCode, originalURL, expiresAt)
 	if err != nil {
-		errMsg := "Something went wrong"
-		var appErr *apierr.AppError
-		if errors.As(err, &appErr) {
-			errMsg = appErr.Message
-		}
 		h.templates.RenderPartial(w, "link_result", map[string]any{
-			"Error": errMsg,
+			"Error": friendlyError(err),
 		})
 		return
 	}

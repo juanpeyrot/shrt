@@ -1,11 +1,9 @@
 package web
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 
-	"shrt/internal/apierr"
 	"shrt/internal/auth"
 
 	"github.com/go-chi/chi/v5"
@@ -68,6 +66,21 @@ func (h *WebHandler) DeleteLink(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	result, err := h.linkService.ListLinks(claims.UserID, 1, 20)
+	if err != nil || result.TotalItems == 0 {
+		w.Header().Set("HX-Retarget", "#link-table")
+		w.Header().Set("HX-Reswap", "innerHTML")
+		h.templates.RenderPartial(w, "link_table", map[string]any{
+			"Links":      nil,
+			"Page":       1,
+			"PageSize":   20,
+			"TotalItems": 0,
+			"TotalPages": 0,
+			"BaseURL":    h.baseURL,
+		})
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -94,14 +107,9 @@ func (h *WebHandler) UpdateLink(w http.ResponseWriter, r *http.Request) {
 
 	link, err := h.linkService.UpdateLink(claims.UserID, shortCode, newURL)
 	if err != nil {
-		errMsg := "Failed to update link"
-		var appErr *apierr.AppError
-		if errors.As(err, &appErr) {
-			errMsg = appErr.Message
-		}
 		h.templates.RenderPartial(w, "link_edit", map[string]any{
 			"Link":    link,
-			"Error":   errMsg,
+			"Error":   friendlyError(err),
 			"BaseURL": h.baseURL,
 		})
 		return

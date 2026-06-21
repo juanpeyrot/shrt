@@ -38,8 +38,8 @@ func NewLinkService(repo LinkRepository, linkCache *cache.LinkCache) *LinkServic
 }
 
 func (s *LinkService) CreateShortURL(userID *uuid.UUID, shortCode string, originalURL string, expiresAt *time.Time) (models.ShortURL, error) {
-	if originalURL == "" {
-		return models.ShortURL{}, apierr.NewValidation("original_url is required")
+	if err := validators.ValidateURL(originalURL); err != nil {
+		return models.ShortURL{}, err
 	}
 	if expiresAt != nil && expiresAt.Before(time.Now()) {
 		return models.ShortURL{}, apierr.NewValidation("expires_at must be in the future")
@@ -100,8 +100,8 @@ func (s *LinkService) RetrieveLink(userID uuid.UUID, shortCode string) (models.S
 }
 
 func (s *LinkService) UpdateLink(userID uuid.UUID, shortCode, originalURL string) (models.ShortURL, error) {
-	if originalURL == "" {
-		return models.ShortURL{}, apierr.NewValidation("original_url is required")
+	if err := validators.ValidateURL(originalURL); err != nil {
+		return models.ShortURL{}, err
 	}
 
 	link, err := s.RetrieveLink(userID, shortCode)

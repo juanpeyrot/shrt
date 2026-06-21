@@ -47,14 +47,14 @@ func (s *AuthService) GetUser(id uuid.UUID) (models.User, error) {
 }
 
 func (s *AuthService) RegisterLocal(email, password, displayName string) (auth.TokenPair, error) {
-	if len(displayName) < 3 {
-		return auth.TokenPair{}, apierr.NewValidation("display_name must be at least 3 characters")
+	if len(displayName) < 3 || len(displayName) > 50 {
+		return auth.TokenPair{}, apierr.NewValidation("display_name must be between 3 and 50 characters")
 	}
-	if email == "" {
+	if email == "" || len(email) > 255 {
 		return auth.TokenPair{}, apierr.NewValidation("email is required")
 	}
-	if len(password) < 8 {
-		return auth.TokenPair{}, apierr.NewValidation("password must be at least 8 characters")
+	if len(password) < 8 || len(password) > 128 {
+		return auth.TokenPair{}, apierr.NewValidation("password must be between 8 and 128 characters")
 	}
 
 	_, err := s.repo.GetUserByEmail(email)

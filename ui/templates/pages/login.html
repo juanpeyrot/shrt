@@ -7,15 +7,16 @@
     {{if .Content}}{{with .Content}}
       {{if .Error}}<div class="alert alert-error">{{.Error}}</div>{{end}}
     {{end}}{{end}}
-    <form method="POST" action="/login">
+    <form id="login-form" method="POST" action="/login" novalidate>
       <div class="form-group">
         <label class="form-label" for="email">Email</label>
-        <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com" required {{if .Content}}{{with .Content}}value="{{.Email}}"{{end}}{{end}}>
+        <input type="email" id="email" name="email" class="form-input" placeholder="you@example.com" data-max="255" {{if .Content}}{{with .Content}}value="{{.Email}}"{{end}}{{end}}>
       </div>
       <div class="form-group">
         <label class="form-label" for="password">Password</label>
-        <input type="password" id="password" name="password" class="form-input" placeholder="Your password" required>
+        <input type="password" id="password" name="password" class="form-input" placeholder="Your password" data-min="8" data-max="128">
       </div>
+      <div id="form-errors"></div>
       <button type="submit" class="btn btn-primary" style="width:100%">Sign in</button>
     </form>
     <div class="auth-divider">or</div>
@@ -32,4 +33,19 @@
     <p class="auth-footer">Don't have an account? <a href="/register">Sign up</a></p>
   </div>
 </div>
+<script>
+(function() {
+  capInputs(document.getElementById('login-form'));
+  document.getElementById('login-form').addEventListener('submit', function(e) {
+    var errors = [];
+    var email = this.email.value.trim();
+    var pw = this.password.value;
+    if (!email) errors.push('Please enter your email address.');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Please enter a valid email address.');
+    if (!pw) errors.push('Please enter your password.');
+    else if (pw.length < 8 || pw.length > 128) errors.push('Password must be between 8 and 128 characters.');
+    if (errors.length) { e.preventDefault(); showFormErrors('login-form', errors); }
+  });
+})();
+</script>
 {{end}}

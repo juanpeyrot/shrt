@@ -2,8 +2,10 @@ package web
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
+	"shrt/internal/apierr"
 	"shrt/internal/auth/oauth"
 	"shrt/internal/models"
 	"shrt/internal/services"
@@ -87,6 +89,41 @@ func (h *WebHandler) setAuthCookies(w http.ResponseWriter, accessToken, refreshT
 		Secure:   h.secureCookie,
 		SameSite: http.SameSiteLaxMode,
 	})
+}
+
+var userFriendlyErrors = map[string]string{
+	// URL
+	"url is required":                "Please enter a URL to shorten.",
+	"url is invalid":                 "Please enter a valid URL (e.g. https://example.com).",
+	"url is too long":                "The URL is too long. Maximum 2048 characters.",
+	"url must start with http or https": "The URL must start with http:// or https://.",
+	// Alias
+	"short_code already in use":      "This custom alias is already taken. Try a different one.",
+	"short_code must be 3-16 characters and can only contain letters, numbers, underscores, and hyphens": "Custom alias must be 3–16 characters long, using only letters, numbers, hyphens or underscores.",
+	// Expiration
+	"expires_at must be in the future": "The expiration date must be in the future.",
+	// Auth
+	"email already registered":       "This email is already registered. Try logging in.",
+	"email is required":              "Please enter your email address.",
+	"password must be at least 8 characters": "Password must be at least 8 characters.",
+	"display_name must be at least 3 characters": "Display name must be at least 3 characters.",
+	"display_name must be between 3 and 50 characters": "Display name must be between 3 and 50 characters.",
+	"password must be between 8 and 128 characters": "Password must be between 8 and 128 characters.",
+	"invalid credentials":            "Invalid email or password.",
+	// Links
+	"original_url is required":       "Please enter a URL to shorten.",
+	"you don't own this short URL":   "You don't have permission to access this link.",
+	"short URL not found":            "This link doesn't exist or has expired.",
+}
+
+func friendlyError(err error) string {
+	var appErr *apierr.AppError
+	if errors.As(err, &appErr) {
+		if msg, ok := userFriendlyErrors[appErr.Message]; ok {
+			return msg
+		}
+	}
+	return "Something went wrong. Please try again."
 }
 
 func (h *WebHandler) clearAuthCookies(w http.ResponseWriter) {

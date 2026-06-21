@@ -6,19 +6,68 @@
   <p class="hero-subtitle">Paste your long URL and get a short, shareable link instantly.</p>
 </section>
 <div class="shorten-card">
-  <form hx-post="/shorten" hx-target="#result" hx-swap="innerHTML">
+  <form id="shorten-form" hx-post="/shorten" hx-target="#result" hx-swap="innerHTML">
     <div class="shorten-input-group">
-      <input type="url" name="original_url" class="form-input" placeholder="https://example.com/your-very-long-url" required>
+      <input type="text" name="original_url" class="form-input"
+             placeholder="https://example.com/your-very-long-url"
+             data-max="2048">
       <button type="submit" class="btn btn-primary">Shorten</button>
     </div>
     <div class="shorten-extras">
-      <input type="text" name="short_code" class="form-input" placeholder="Custom alias (optional)">
+      <input type="text" name="short_code" class="form-input"
+             placeholder="Custom alias (optional)"
+             data-min="3" data-max="16" data-pattern="^[a-zA-Z0-9_-]+$">
       <input type="datetime-local" name="expires_at" class="form-input" min="{{.Content}}">
     </div>
+    <div id="form-errors"></div>
   </form>
   <div id="result"></div>
 </div>
 <div class="hero-illustration">
   <img src="/static/img/dino.webp" alt="">
 </div>
+<script>
+(function() {
+  var form = document.getElementById('shorten-form');
+  capInputs(form);
+
+  form.addEventListener('htmx:configRequest', function(e) {
+    var url = form.original_url.value.trim();
+    var alias = form.short_code.value.trim();
+    var errors = [];
+
+    if (!url) {
+      errors.push('Please enter a URL to shorten.');
+    } else if (url.length > 2048) {
+      errors.push('URL must be at most 2048 characters.');
+    } else {
+      try {
+        var parsed = new URL(url);
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+          errors.push('The URL must start with http:// or https://.');
+        } else if (!parsed.hostname.includes('.') && parsed.hostname !== 'localhost') {
+          errors.push('Please enter a valid URL (e.g. https://example.com).');
+        }
+      } catch(err) {
+        errors.push('Please enter a valid URL (e.g. https://example.com).');
+      }
+    }
+
+    if (alias) {
+      if (alias.length < 3 || alias.length > 16) {
+        errors.push('Custom alias must be between 3 and 16 characters.');
+      } else if (!/^[a-zA-Z0-9_-]+$/.test(alias)) {
+        errors.push('Custom alias can only contain letters, numbers, hyphens or underscores.');
+      }
+    }
+
+    if (errors.length) {
+      e.preventDefault();
+      showFormErrors('shorten-form', errors);
+      return;
+    }
+    document.getElementById('form-errors').innerHTML = '';
+  });
+})();
+</script>
 {{end}}
