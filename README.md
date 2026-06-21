@@ -215,6 +215,10 @@ JWT tokens are issued as access + refresh pairs.
 
 ---
 
+## ⭐ Give it a star
+
+If you found this project useful, consider giving it a star on GitHub — it helps a lot!
+
 ## Based on
 
 This project was built following the [URL Shortening Service](https://roadmap.sh/projects/url-shortening-service) project from [roadmap.sh](https://roadmap.sh), extended with authentication, OAuth, a web UI, caching, and click analytics.
