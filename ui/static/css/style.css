@@ -516,7 +516,7 @@ a:hover {
   background: var(--canvas);
   border: 1.5px solid var(--hairline);
   border-radius: var(--rounded-lg);
-  overflow: hidden;
+  overflow-x: auto;
 }
 
 .link-table {
@@ -955,6 +955,10 @@ footer {
 /* ---- Responsive ---- */
 
 @media (max-width: 768px) {
+  .nav-user {
+    display: none;
+  }
+
   .hero-title {
     font-size: 30px;
   }
@@ -977,6 +981,11 @@ footer {
 
   .form-row {
     flex-direction: column;
+  }
+
+  .dashboard {
+    padding-left: 32px;
+    padding-right: 32px;
   }
 
   .dashboard-header {
