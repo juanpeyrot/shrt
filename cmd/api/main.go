@@ -10,6 +10,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"shrt/internal/auth/oauth"
+	"shrt/internal/cache"
 	"shrt/internal/config"
 	"shrt/internal/db"
 	"shrt/internal/handlers"
@@ -56,6 +57,12 @@ func run() error {
 				RedirectURL:  getEnv("GITHUB_REDIRECT_URL", ""),
 			},
 		}),
+		config.WithRedis(config.RedisConfig{
+			Host:     getEnv("REDIS_HOST", "localhost"),
+			Port:     getEnv("REDIS_PORT", "6379"),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       int(parseUint(getEnv("REDIS_DB", "0"))),
+		}),
 	)
 
 	dbpool, err := db.New(cfg.DB())
@@ -63,6 +70,14 @@ func run() error {
 		return err
 	}
 	defer dbpool.Close()
+
+	redisClient, err := cache.New(cfg.Redis())
+	if err != nil {
+		return err
+	}
+	defer redisClient.Close()
+
+	linkCache := cache.NewLinkCache(redisClient)
 
 	r := chi.NewRouter()
 
@@ -81,7 +96,7 @@ func run() error {
 	r.Get("/auth/{provider}/callback", authHandler.OAuthCallback)
 
 	linkRepo := repositories.NewLinkRepository(dbpool)
-	linkSvc := services.NewLinkService(linkRepo)
+	linkSvc := services.NewLinkService(linkRepo, linkCache)
 	linkHandler := handlers.NewLinkHandler(linkSvc)
 
 	r.Get("/{shortCode}", linkHandler.Redirect)

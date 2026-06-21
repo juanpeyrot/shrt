@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"log/slog"
 	"shrt/internal/apierr"
+	"shrt/internal/cache"
 	"shrt/internal/models"
 	"shrt/internal/utils/shortcode"
 	"shrt/internal/utils/validators"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 const maxShortCodeRetries = 5
@@ -26,11 +28,12 @@ type LinkRepository interface {
 }
 
 type LinkService struct {
-	repo LinkRepository
+	repo      LinkRepository
+	linkCache *cache.LinkCache
 }
 
-func NewLinkService(repo LinkRepository) *LinkService {
-	return &LinkService{repo: repo}
+func NewLinkService(repo LinkRepository, linkCache *cache.LinkCache) *LinkService {
+	return &LinkService{repo: repo, linkCache: linkCache}
 }
 
 func (s *LinkService) CreateShortURL(userID *uuid.UUID, shortCode string, originalURL string, expiresAt *time.Time) (models.ShortURL, error) {
@@ -48,6 +51,15 @@ func (s *LinkService) CreateShortURL(userID *uuid.UUID, shortCode string, origin
 }
 
 func (s *LinkService) GetByShortCode(shortCode, referer string) (string, error) {
+	cached, err := s.linkCache.Get(shortCode)
+	if err == nil {
+		go s.recordClick(cached.ID, referer)
+		return cached.OriginalURL, nil
+	}
+	if !errors.Is(err, redis.Nil) {
+		slog.Error("cache get failed, falling back to db", "short_code", shortCode, "err", err)
+	}
+
 	link, err := s.repo.GetLinkByShortCode(shortCode)
 	if err != nil {
 		if errors.Is(err, ErrShortCodeNotFound) {
@@ -56,11 +68,18 @@ func (s *LinkService) GetByShortCode(shortCode, referer string) (string, error) 
 		return "", apierr.NewInternal("failed to get short URL", err)
 	}
 
-	if err := s.repo.AddClick(link.ID, referer); err != nil {
-		slog.Error("failed to record click", "short_code", shortCode, "err", err)
+	if err := s.linkCache.Set(shortCode, cache.CachedLink{ID: link.ID, OriginalURL: link.OriginalURL}); err != nil {
+		slog.Error("cache set failed", "short_code", shortCode, "err", err)
 	}
 
+	go s.recordClick(link.ID, referer)
 	return link.OriginalURL, nil
+}
+
+func (s *LinkService) recordClick(linkID uuid.UUID, referer string) {
+	if err := s.repo.AddClick(linkID, referer); err != nil {
+		slog.Error("failed to record click", "link_id", linkID, "err", err)
+	}
 }
 
 func (s *LinkService) RetrieveLink(userID uuid.UUID, shortCode string) (models.ShortURL, error) {
@@ -93,6 +112,10 @@ func (s *LinkService) UpdateLink(userID uuid.UUID, shortCode, originalURL string
 		return models.ShortURL{}, apierr.NewInternal("failed to update short URL", err)
 	}
 
+	if err := s.linkCache.Delete(shortCode); err != nil {
+		slog.Error("cache delete failed", "short_code", shortCode, "err", err)
+	}
+
 	link.OriginalURL = originalURL
 	return link, nil
 }
@@ -104,6 +127,10 @@ func (s *LinkService) DeleteLink(userID uuid.UUID, shortCode string) error {
 
 	if err := s.repo.SoftDelete(shortCode); err != nil {
 		return apierr.NewInternal("failed to delete short URL", err)
+	}
+
+	if err := s.linkCache.Delete(shortCode); err != nil {
+		slog.Error("cache delete failed", "short_code", shortCode, "err", err)
 	}
 
 	return nil

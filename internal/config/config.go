@@ -10,10 +10,18 @@ const (
 type AppConfig struct {
 	serverPort string
 	db         DBConfig
+	redis      RedisConfig
 	maxConn    uint
 	env        Environment
 	tls        bool
 	oauth      OAuthConfig
+}
+
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
 }
 
 type DBConfig struct {
@@ -38,12 +46,13 @@ type ProviderConfig struct {
 
 func (c ProviderConfig) Enabled() bool { return c.ClientID != "" }
 
-func (c *AppConfig) ServerPort() string { return c.serverPort }
-func (c *AppConfig) DB() DBConfig       { return c.db }
-func (c *AppConfig) MaxConn() uint      { return c.maxConn }
-func (c *AppConfig) Env() Environment   { return c.env }
-func (c *AppConfig) TLS() bool          { return c.tls }
-func (c *AppConfig) OAuth() OAuthConfig { return c.oauth }
+func (c *AppConfig) ServerPort() string  { return c.serverPort }
+func (c *AppConfig) DB() DBConfig        { return c.db }
+func (c *AppConfig) Redis() RedisConfig  { return c.redis }
+func (c *AppConfig) MaxConn() uint       { return c.maxConn }
+func (c *AppConfig) Env() Environment    { return c.env }
+func (c *AppConfig) TLS() bool           { return c.tls }
+func (c *AppConfig) OAuth() OAuthConfig  { return c.oauth }
 
 func New(opts ...func(*AppConfig)) *AppConfig {
 	cfg := &AppConfig{
@@ -91,6 +100,12 @@ func WithTLS(enabled bool) func(*AppConfig) {
 func WithOAuth(oauth OAuthConfig) func(*AppConfig) {
 	return func(c *AppConfig) {
 		c.oauth = oauth
+	}
+}
+
+func WithRedis(redis RedisConfig) func(*AppConfig) {
+	return func(c *AppConfig) {
+		c.redis = redis
 	}
 }
 
