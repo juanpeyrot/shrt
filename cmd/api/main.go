@@ -17,6 +17,7 @@ import (
 	"shrt/internal/middleware"
 	"shrt/internal/repositories"
 	"shrt/internal/services"
+	"shrt/internal/web"
 )
 
 func main() {
@@ -34,6 +35,7 @@ func run() error {
 
 	cfg := config.New(
 		config.WithServerPort(getEnv("PORT", "3000")),
+		config.WithBaseURL(getEnv("BASE_URL", "http://localhost:3000")),
 		config.WithEnvironment(config.Environment(getEnv("APP_ENV", "development"))),
 		config.WithMaxConn(parseUint(getEnv("MAX_CONN", "5"))),
 		config.WithTLS(getEnv("TLS_ENABLED", "false") == "true"),
@@ -81,36 +83,84 @@ func run() error {
 
 	r := chi.NewRouter()
 
+	// Health
 	healthHandler := handlers.NewHealthHandler(dbpool)
 	r.Get("/health", healthHandler.Health)
 
 	jwtSecret := []byte(mustGetEnv("JWT_SECRET"))
 
+	// Repositories & services
 	authRepo := repositories.NewAuthRepository(dbpool)
 	tokenSvc := services.NewTokenService(jwtSecret, authRepo)
 	authSvc := services.NewAuthService(authRepo, tokenSvc)
-	authHandler := handlers.NewAuthHandler(authSvc, buildOAuthRegistry(cfg.OAuth()))
-	r.Post("/sign-up", authHandler.RegisterLocal)
-	r.Post("/login", authHandler.LoginLocal)
-	r.Get("/auth/{provider}", authHandler.OAuthRedirect)
-	r.Get("/auth/{provider}/callback", authHandler.OAuthCallback)
+	oauthRegistry := buildOAuthRegistry(cfg.OAuth())
 
 	linkRepo := repositories.NewLinkRepository(dbpool)
 	linkSvc := services.NewLinkService(linkRepo, linkCache)
+
+	// --- API routes ---
+	authHandler := handlers.NewAuthHandler(authSvc, oauthRegistry)
 	linkHandler := handlers.NewLinkHandler(linkSvc)
 
-	r.Get("/{shortCode}", linkHandler.Redirect)
+	r.Route("/api", func(r chi.Router) {
+		r.Post("/sign-up", authHandler.RegisterLocal)
+		r.Post("/login", authHandler.LoginLocal)
+		r.Get("/auth/{provider}", authHandler.OAuthRedirect)
+		r.Get("/auth/{provider}/callback", authHandler.OAuthCallback)
 
-	r.With(middleware.OptionalAuthenticate(jwtSecret)).Post("/links", linkHandler.CreateShortURL)
+		r.With(middleware.OptionalAuthenticate(jwtSecret)).Post("/links", linkHandler.CreateShortURL)
 
-	r.Group(func(r chi.Router) {
-		r.Use(middleware.Authenticate(jwtSecret))
-		r.Get("/links", linkHandler.ListLinks)
-		r.Get("/links/{shortCode}", linkHandler.RetrieveOriginalURL)
-		r.Put("/links/{shortCode}", linkHandler.UpdateShortURL)
-		r.Delete("/links/{shortCode}", linkHandler.DeleteShortURL)
-		r.Get("/links/{shortCode}/stats", linkHandler.GetStats)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.Authenticate(jwtSecret))
+			r.Get("/links", linkHandler.ListLinks)
+			r.Get("/links/{shortCode}", linkHandler.RetrieveOriginalURL)
+			r.Put("/links/{shortCode}", linkHandler.UpdateShortURL)
+			r.Delete("/links/{shortCode}", linkHandler.DeleteShortURL)
+			r.Get("/links/{shortCode}/stats", linkHandler.GetStats)
+		})
 	})
+
+	// --- Web UI ---
+	tmpl, err := web.NewTemplateRegistry("ui/templates", cfg.BaseURL())
+	if err != nil {
+		return err
+	}
+
+	webHandler := web.NewWebHandler(linkSvc, authSvc, tokenSvc, oauthRegistry, tmpl, jwtSecret, cfg.BaseURL(), cfg.TLS())
+
+	// Static files
+	fileServer := http.FileServer(http.Dir("ui/static"))
+	r.Handle("/static/*", http.StripPrefix("/static/", fileServer))
+
+	// Public web pages
+	r.Group(func(r chi.Router) {
+		r.Use(web.WebOptionalAuth(jwtSecret, tokenSvc, authSvc, cfg.TLS()))
+		r.Get("/", webHandler.Home)
+		r.Post("/shorten", webHandler.CreateShortURL)
+	})
+
+	// Auth web pages
+	r.Get("/login", webHandler.LoginPage)
+	r.Post("/login", webHandler.LoginSubmit)
+	r.Get("/register", webHandler.RegisterPage)
+	r.Post("/register", webHandler.RegisterSubmit)
+	r.Get("/logout", webHandler.Logout)
+	r.Get("/auth/{provider}/start", webHandler.WebOAuthStart)
+
+	// Protected web pages
+	r.Group(func(r chi.Router) {
+		r.Use(web.WebAuthenticate(jwtSecret, tokenSvc, authSvc, cfg.TLS()))
+		r.Get("/dashboard", webHandler.Dashboard)
+		r.Get("/dashboard/links", webHandler.LinkTable)
+		r.Delete("/dashboard/links/{shortCode}", webHandler.DeleteLink)
+		r.Get("/dashboard/links/{shortCode}/edit", webHandler.EditForm)
+		r.Put("/dashboard/links/{shortCode}", webHandler.UpdateLink)
+		r.Get("/dashboard/links/{shortCode}/row", webHandler.LinkRow)
+		r.Get("/dashboard/links/{shortCode}/stats", webHandler.LinkStats)
+	})
+
+	// Redirect catch-all
+	r.Get("/{shortCode}", linkHandler.Redirect)
 
 	log.Println("Server running on port:", cfg.ServerPort())
 	return http.ListenAndServe(":"+cfg.ServerPort(), r)

@@ -1,0 +1,47 @@
+{{define "link_table"}}
+{{if .Links}}
+<table class="link-table">
+  <thead>
+    <tr>
+      <th>Short Code</th>
+      <th>Original URL</th>
+      <th>Clicks</th>
+      <th>Created</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Links}}
+    {{template "link_row" dict "Link" . "BaseURL" $.BaseURL}}
+    {{end}}
+  </tbody>
+</table>
+{{if gt .TotalPages 1}}
+<nav class="pagination">
+  {{if gt .Page 1}}
+    <a hx-get="/dashboard/links?page={{sub .Page 1}}" hx-target="#link-table" hx-swap="innerHTML">&larr; Prev</a>
+  {{else}}
+    <span class="disabled">&larr; Prev</span>
+  {{end}}
+  {{range seq 1 .TotalPages}}
+    {{if eq . $.Page}}
+      <span class="active">{{.}}</span>
+    {{else}}
+      <a hx-get="/dashboard/links?page={{.}}" hx-target="#link-table" hx-swap="innerHTML">{{.}}</a>
+    {{end}}
+  {{end}}
+  {{if lt .Page .TotalPages}}
+    <a hx-get="/dashboard/links?page={{add .Page 1}}" hx-target="#link-table" hx-swap="innerHTML">Next &rarr;</a>
+  {{else}}
+    <span class="disabled">Next &rarr;</span>
+  {{end}}
+</nav>
+{{end}}
+{{else}}
+<div class="empty-state">
+  <p class="empty-state-title">No links yet</p>
+  <p>Create your first short link to get started.</p>
+  <a href="/" class="btn btn-primary mt-md" style="display:inline-flex">Create Link</a>
+</div>
+{{end}}
+{{end}}

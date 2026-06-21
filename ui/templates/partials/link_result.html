@@ -1,0 +1,13 @@
+{{define "link_result"}}
+{{if .Error}}
+<div class="alert alert-error mt-lg">{{.Error}}</div>
+{{else}}
+<div class="link-result">
+  <a href="{{.ShortURL}}" target="_blank" class="link-result-url">{{.ShortURL}}</a>
+  <p class="link-result-original">{{.OriginalURL}}</p>
+  <div class="link-result-actions">
+    <button class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText('{{.ShortURL}}'); this.textContent='Copied!'">Copy</button>
+  </div>
+</div>
+{{end}}
+{{end}}

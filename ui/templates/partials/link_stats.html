@@ -1,0 +1,43 @@
+{{define "link_stats"}}
+<div class="stats-panel">
+  <div class="stats-header">
+    <h3 class="stats-title">Stats for /{{.Link.ShortCode}}</h3>
+    <button class="btn btn-outline btn-sm" onclick="document.getElementById('stats-panel').innerHTML=''">Close</button>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-value">{{.Stats.TotalClicks}}</div>
+      <div class="stat-label">Total Clicks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value">{{if .Stats.LastClickAt}}{{formatDateTime .Stats.LastClickAt}}{{else}}&mdash;{{end}}</div>
+      <div class="stat-label">Last Click</div>
+    </div>
+  </div>
+  {{if .Stats.ClicksPerDay}}
+  <h4 class="mb-md">Clicks per day</h4>
+  <div class="bar-chart">
+    {{range .Stats.ClicksPerDay}}
+    <div class="bar-row">
+      <span class="bar-label">{{.Date}}</span>
+      <div class="bar-track">
+        <div class="bar-fill" style="width: {{pctOf .Clicks $.MaxClicks}}%"></div>
+      </div>
+      <span class="bar-value">{{.Clicks}}</span>
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+  {{if .Stats.TopReferers}}
+  <h4 class="mt-lg mb-md">Top Referers</h4>
+  <ul class="referer-list">
+    {{range .Stats.TopReferers}}
+    <li class="referer-item">
+      <span class="referer-domain">{{if .Referer}}{{.Referer}}{{else}}Direct{{end}}</span>
+      <span class="referer-count">{{.Clicks}}</span>
+    </li>
+    {{end}}
+  </ul>
+  {{end}}
+</div>
+{{end}}

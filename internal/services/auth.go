@@ -14,6 +14,7 @@ import (
 )
 
 type AuthRepository interface {
+	GetUserByID(id uuid.UUID) (models.User, error)
 	GetUserByEmail(email string) (models.User, error)
 	GetLocalAuthByEmail(email string) (models.User, models.AuthMethod, error)
 	GetUserByProviderID(provider, providerUserID string) (models.User, error)
@@ -32,6 +33,17 @@ type AuthService struct {
 
 func NewAuthService(repo AuthRepository, tokenService TokenIssuer) *AuthService {
 	return &AuthService{repo: repo, tokenService: tokenService}
+}
+
+func (s *AuthService) GetUser(id uuid.UUID) (models.User, error) {
+	user, err := s.repo.GetUserByID(id)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			return models.User{}, apierr.NewNotFound("user not found")
+		}
+		return models.User{}, apierr.NewInternal("failed to get user", err)
+	}
+	return user, nil
 }
 
 func (s *AuthService) RegisterLocal(email, password, displayName string) (auth.TokenPair, error) {

@@ -1,0 +1,25 @@
+{{define "link_row"}}
+<tr id="row-{{.Link.ShortCode}}">
+  <td><a href="{{shortURL .Link.ShortCode}}" target="_blank" class="short-code">{{.Link.ShortCode}}</a></td>
+  <td class="original-url" title="{{.Link.OriginalURL}}">{{.Link.OriginalURL}}</td>
+  <td class="click-count">{{.Link.ClickCount}}</td>
+  <td>{{formatDate .Link.CreatedAt}}</td>
+  <td>
+    <div class="actions">
+      <button class="btn btn-outline btn-sm"
+              hx-get="/dashboard/links/{{.Link.ShortCode}}/stats"
+              hx-target="#stats-panel"
+              hx-swap="innerHTML">Stats</button>
+      <button class="btn btn-outline btn-sm"
+              hx-get="/dashboard/links/{{.Link.ShortCode}}/edit"
+              hx-target="#row-{{.Link.ShortCode}}"
+              hx-swap="outerHTML">Edit</button>
+      <button class="btn btn-danger btn-sm"
+              hx-delete="/dashboard/links/{{.Link.ShortCode}}"
+              hx-target="#row-{{.Link.ShortCode}}"
+              hx-swap="outerHTML swap:200ms"
+              hx-confirm="Delete this link?"></button>
+    </div>
+  </td>
+</tr>
+{{end}}

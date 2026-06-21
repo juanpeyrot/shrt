@@ -9,6 +9,7 @@ const (
 
 type AppConfig struct {
 	serverPort string
+	baseURL    string
 	db         DBConfig
 	redis      RedisConfig
 	maxConn    uint
@@ -47,6 +48,7 @@ type ProviderConfig struct {
 func (c ProviderConfig) Enabled() bool { return c.ClientID != "" }
 
 func (c *AppConfig) ServerPort() string  { return c.serverPort }
+func (c *AppConfig) BaseURL() string     { return c.baseURL }
 func (c *AppConfig) DB() DBConfig        { return c.db }
 func (c *AppConfig) Redis() RedisConfig  { return c.redis }
 func (c *AppConfig) MaxConn() uint       { return c.maxConn }
@@ -106,6 +108,12 @@ func WithOAuth(oauth OAuthConfig) func(*AppConfig) {
 func WithRedis(redis RedisConfig) func(*AppConfig) {
 	return func(c *AppConfig) {
 		c.redis = redis
+	}
+}
+
+func WithBaseURL(url string) func(*AppConfig) {
+	return func(c *AppConfig) {
+		c.baseURL = url
 	}
 }
 

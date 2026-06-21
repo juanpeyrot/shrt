@@ -124,6 +124,23 @@ func (h *AuthHandler) OAuthCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if webCookie, err := r.Cookie("oauth_web"); err == nil && webCookie.Value == "1" {
+		http.SetCookie(w, &http.Cookie{
+			Name: "oauth_web", Value: "", Path: "/", MaxAge: -1,
+			HttpOnly: true, Secure: r.TLS != nil, SameSite: http.SameSiteLaxMode,
+		})
+		http.SetCookie(w, &http.Cookie{
+			Name: "access_token", Value: tokens.AccessToken, Path: "/", MaxAge: 900,
+			HttpOnly: true, Secure: r.TLS != nil, SameSite: http.SameSiteLaxMode,
+		})
+		http.SetCookie(w, &http.Cookie{
+			Name: "refresh_token", Value: tokens.RefreshToken, Path: "/", MaxAge: 604800,
+			HttpOnly: true, Secure: r.TLS != nil, SameSite: http.SameSiteLaxMode,
+		})
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, tokens)
 }
 

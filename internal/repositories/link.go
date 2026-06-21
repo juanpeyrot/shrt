@@ -133,14 +133,27 @@ func (r *LinkRepository) ListByUserID(userID fmt.Stringer, limit int, offset int
 }
 
 func (r *LinkRepository) AddClick(linkID fmt.Stringer, referer string) error {
-	_, err := r.db.Exec(context.Background(),
+	tx, err := r.db.Begin(context.Background())
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(context.Background())
+
+	if _, err := tx.Exec(context.Background(),
 		`INSERT INTO link_clicks (link_id, referer) VALUES ($1, $2)`,
 		linkID, referer,
-	)
-	if err != nil {
+	); err != nil {
 		return fmt.Errorf("db insert click: %w", err)
 	}
-	return nil
+
+	if _, err := tx.Exec(context.Background(),
+		`UPDATE links SET click_count = click_count + 1 WHERE id = $1`,
+		linkID,
+	); err != nil {
+		return fmt.Errorf("db update click_count: %w", err)
+	}
+
+	return tx.Commit(context.Background())
 }
 
 func (r *LinkRepository) GetStats(linkID fmt.Stringer, days int) (models.LinkStats, error) {

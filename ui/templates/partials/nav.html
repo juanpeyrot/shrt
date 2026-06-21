@@ -1,0 +1,17 @@
+{{define "nav"}}
+<header class="navbar">
+  <div class="container navbar-inner">
+    <a href="/" class="navbar-brand">shrt</a>
+    <nav class="navbar-links">
+      {{if .User}}
+        <a href="/dashboard" class="nav-link">Dashboard</a>
+        <span class="nav-user">{{.User.DisplayName}}</span>
+        <a href="/logout" class="btn btn-secondary">Logout</a>
+      {{else}}
+        <a href="/login" class="btn btn-secondary">Login</a>
+        <a href="/register" class="btn btn-primary">Sign Up</a>
+      {{end}}
+    </nav>
+  </div>
+</header>
+{{end}}

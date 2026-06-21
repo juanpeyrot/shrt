@@ -21,6 +21,21 @@ func NewAuthRepository(db *pgxpool.Pool) *AuthRepository {
 	return &AuthRepository{db: db}
 }
 
+func (r *AuthRepository) GetUserByID(id uuid.UUID) (models.User, error) {
+	var u models.User
+	err := r.db.QueryRow(context.Background(),
+		`SELECT id, display_name, email, created_at FROM users WHERE id = $1`,
+		id,
+	).Scan(&u.ID, &u.DisplayName, &u.Email, &u.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return models.User{}, services.ErrUserNotFound
+		}
+		return models.User{}, fmt.Errorf("query user: %w", err)
+	}
+	return u, nil
+}
+
 func (r *AuthRepository) CreateUserWithAuthMethod(u models.User, m models.AuthMethod) error {
 	tx, err := r.db.Begin(context.Background())
 	if err != nil {
